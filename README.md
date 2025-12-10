@@ -7,10 +7,10 @@ Radar visualization based on the concepts of Thoughtworks Technology Radar.
 Features:
 
 - ✅ Numbered blips - easy reference
-- ✅ Four quadrants - divided by horizontal and vertical lines
+- ✅ Four arcs - divided by horizontal and vertical lines
 - ✅ Concentric rings - representing adoption stages
-- ✅ Random positioning - blips placed randomly within their ring/quadrant
-- ✅ Color-coded - each quadrant has its own color
+- ✅ Random positioning - blips placed randomly within their ring/arc
+- ✅ Color-coded - each arc has its own color
 - ✅ Interactive tooltips - hover to see blip details
 - ✅ Configurable - customize size, labels, colors, rings
 
@@ -18,9 +18,9 @@ Features for interactions:
 
 - ✨ Animated entrance - Blips fade in and grow smoothly
 - 🔍 Search functionality - Filter by name in real-time
-- 🎛️ Quadrant filters - Toggle quadrants on/off
+- 🎛️ Arc filters - Toggle arcs on/off
 - 🎚️ Ring filters - Toggle rings on/off
-- 📋 Interactive legend - Grouped by quadrant with ring labels
+- 📋 Interactive legend - Grouped by arc with ring labels
 - 🔗 Bidirectional highlighting - Hover radar→legend or legend→radar
 - 🔄 Smooth transitions - Animated filtering and updates
 - 🎨 Professional styling - Clean, modern UI
@@ -66,6 +66,7 @@ Run:
 ```sh
 npm create vite@latest radar -- --template vanilla-ts
 cd radar
+npm install -D vitest
 npm install d3
 npm install -D @types/d3
 ```

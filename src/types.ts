@@ -1,6 +1,6 @@
 export interface Blip {
   name: string;
-  quadrant: number;
+  arc: number;
   ring: number;
 }
 
@@ -15,19 +15,20 @@ export interface BlipWithPosition extends Blip {
 export interface RadarConfig {
   width?: number;
   height?: number;
+  arcs?: number;
+  arcLabels?: string[];
   rings?: number;
   ringLabels?: string[];
-  quadrantLabels?: string[];
   colors?: string[];
   animationDuration?: number;
 }
 
 export interface ActiveFilters {
-  quadrants: number[];
+  arcs: number[];
   rings: number[];
 }
 
-export interface QuadrantPosition {
+export interface ArcPosition {
   x: number;
   y: number;
 }

@@ -5,8 +5,12 @@ import type {
   BlipWithPosition,
   RadarConfig,
   ActiveFilters,
-  QuadrantPosition
+  ArcPosition
 } from './types';
+import { 
+    arcToRadiansFuzzy, 
+    ringToRadiusFuzzy 
+} from './math.js'
 
 class Radar {
   private config: Required<RadarConfig>;
@@ -27,10 +31,11 @@ class Radar {
     this.config = {
       width: config.width ?? 1000,
       height: config.height ?? 800,
+      arcs: config.arcs ?? 4,
+      arcLabels: config.arcLabels ?? ['Arc 1', 'Arc 2', 'Arc 3', 'Arc 4'],
       rings: config.rings ?? 4,
-      ringLabels: config.ringLabels ?? ['Adopt', 'Trial', 'Assess', 'Hold'],
-      quadrantLabels: config.quadrantLabels ?? ['Languages', 'Frameworks', 'Tools', 'Platforms'],
-      colors: config.colors ?? ['#8B4513', '#4682B4', '#228B22', '#DC143C'],
+      ringLabels: config.ringLabels ?? ['Ring 1', 'Ring 2', 'Ring 3', 'Ring 4'],
+      colors: config.colors ?? ['#CC8800', '#4682B4', '#228B22', '#DC143C'],
       animationDuration: config.animationDuration ?? 1000
     };
 
@@ -41,7 +46,7 @@ class Radar {
     this.centerY = radarHeight / 2;
 
     this.activeFilters = {
-      quadrants: [0, 1, 2, 3],
+      arcs: [0, 1, 2, 3],
       rings: [0, 1, 2, 3]
     };
     this.searchTerm = '';
@@ -56,24 +61,16 @@ class Radar {
 
   private prepareBlipData(blips: Blip[]): BlipWithPosition[] {
     return blips.map((blip, index) => {
-      const ringIndex = blip.ring;
-      const quadrant = blip.quadrant;
-      
-      const quadrantAngle = quadrant * 90;
-      const randomAngle = quadrantAngle + Math.random() * 90;
-      const angleRad = (randomAngle - 90) * Math.PI / 180;
-      
-      const innerR = this.ringRadius(ringIndex);
-      const outerR = this.ringRadius(ringIndex + 1);
-      const r = innerR + (outerR - innerR) * (0.3 + Math.random() * 0.4);
-      
+      const radians = arcToRadiansFuzzy(blip.arc, this.config.arcs);
+      const radius = ringToRadiusFuzzy(blip.ring, this.config.rings);
+      const d3radius = this.ringRadius(radius * this.config.rings); 
       return {
         ...blip,
         id: index,
         number: index + 1,
-        x: r * Math.cos(angleRad),
-        y: r * Math.sin(angleRad),
-        color: this.config.colors[quadrant]
+        x: d3radius * Math.cos(radians - (Math.PI * 0.5)),
+        y: d3radius * Math.sin(radians - (Math.PI * 0.5)),
+        color: this.config.colors[blip.arc]
       };
     });
   }
@@ -162,9 +159,9 @@ class Radar {
 
   private createRadar(): void {
     this.drawRings();
-    this.drawQuadrantLines();
+    this.drawArcLines();
     this.drawRingLabels();
-    this.drawQuadrantLabels();
+    this.drawArcLabels();
   }
 
   private drawRings(): void {
@@ -179,22 +176,17 @@ class Radar {
     }
   }
 
-  private drawQuadrantLines(): void {
-    this.g.append('line')
-      .attr('x1', -this.radius)
-      .attr('y1', 0)
-      .attr('x2', this.radius)
-      .attr('y2', 0)
-      .attr('stroke', '#999')
-      .attr('stroke-width', 2);
-
-    this.g.append('line')
-      .attr('x1', 0)
-      .attr('y1', -this.radius)
-      .attr('x2', 0)
-      .attr('y2', this.radius)
-      .attr('stroke', '#999')
-      .attr('stroke-width', 2);
+  private drawArcLines(): void {
+    for (let i = 0; i < this.config.arcs; i++) {
+      const radians = (i / this.config.arcs) * Math.PI * 2;
+      this.g.append('line')
+        .attr('x1', 0)
+        .attr('y1', 0)
+        .attr('x2', this.radius * Math.cos(radians))
+        .attr('y2', this.radius * Math.sin(radians))
+        .attr('stroke', '#999')
+        .attr('stroke-width', 2);
+    }
   }
 
   private drawRingLabels(): void {
@@ -210,19 +202,19 @@ class Radar {
     });
   }
 
-  private drawQuadrantLabels(): void {
+  private drawArcLabels(): void {
     const labelOffset = this.radius * 0.85;
-    const quadrantPositions: QuadrantPosition[] = [
+    const arcPositions: ArcPosition[] = [
       { x: labelOffset, y: -labelOffset },
       { x: labelOffset, y: labelOffset },
       { x: -labelOffset, y: labelOffset },
       { x: -labelOffset, y: -labelOffset }
     ];
 
-    this.config.quadrantLabels.forEach((label, i) => {
+    this.config.arcLabels.forEach((label, i) => {
       this.g.append('text')
-        .attr('x', quadrantPositions[i].x)
-        .attr('y', quadrantPositions[i].y)
+        .attr('x', arcPositions[i].x)
+        .attr('y', arcPositions[i].y)
         .attr('font-size', '16px')
         .attr('font-weight', 'bold')
         .attr('fill', this.config.colors[i])
@@ -244,21 +236,21 @@ class Radar {
       .text('Filters')
       .style('margin-top', '0');
 
-    this.createQuadrantFilters(filterSection);
+    this.createArcFilters(filterSection);
     this.createRingFilters(filterSection);
   }
 
-  private createQuadrantFilters(parent: d3.Selection<HTMLDivElement, unknown, HTMLElement, any>): void {
-    const quadrantFilters = parent.append('div')
+  private createArcFilters(parent: d3.Selection<HTMLDivElement, unknown, HTMLElement, any>): void {
+    const arcFilters = parent.append('div')
       .style('margin-bottom', '15px');
 
-    quadrantFilters.append('div')
+    arcFilters.append('div')
       .style('font-weight', 'bold')
       .style('margin-bottom', '5px')
-      .text('Quadrants:');
+      .text('Arcs:');
 
-    this.config.quadrantLabels.forEach((label, i) => {
-      const filterItem = quadrantFilters.append('label')
+    this.config.arcLabels.forEach((label, i) => {
+      const filterItem = arcFilters.append('label')
         .style('display', 'block')
         .style('margin', '5px 0')
         .style('cursor', 'pointer');
@@ -266,13 +258,13 @@ class Radar {
       filterItem.append('input')
         .attr('type', 'checkbox')
         .attr('checked', true)
-        .attr('data-quadrant', i)
+        .attr('data-arc', i)
         .on('change', (event: Event) => {
           const target = event.target as HTMLInputElement;
           if (target.checked) {
-            this.activeFilters.quadrants.push(i);
+            this.activeFilters.arcs.push(i);
           } else {
-            this.activeFilters.quadrants = this.activeFilters.quadrants.filter(q => q !== i);
+            this.activeFilters.arcs = this.activeFilters.arcs.filter(q => q !== i);
           }
           this.updateBlips();
         });
@@ -327,18 +319,18 @@ class Radar {
       .text('Legend')
       .style('margin-top', '0');
 
-    this.config.quadrantLabels.forEach((quadrantLabel, quadrantIndex) => {
-      const quadrantGroup = legendSection.append('div')
-        .attr('class', 'legend-quadrant')
+    this.config.arcLabels.forEach((arcLabel, arcIndex) => {
+      const arcGroup = legendSection.append('div')
+        .attr('class', 'legend-arc')
         .style('margin-bottom', '20px');
 
-      quadrantGroup.append('h4')
-        .style('color', this.config.colors[quadrantIndex])
+      arcGroup.append('h4')
+        .style('color', this.config.colors[arcIndex])
         .style('margin', '10px 0')
-        .text(quadrantLabel);
+        .text(arcLabel);
 
-      quadrantGroup.append('div')
-        .attr('class', `legend-quadrant-${quadrantIndex}`);
+      arcGroup.append('div')
+        .attr('class', `legend-arc-${arcIndex}`);
     });
   }
 
@@ -350,11 +342,11 @@ class Radar {
 
   private getFilteredData(): BlipWithPosition[] {
     return this.blipData.filter(d => {
-      const matchesQuadrant = this.activeFilters.quadrants.includes(d.quadrant);
+      const matchesArc = this.activeFilters.arcs.includes(d.arc);
       const matchesRing = this.activeFilters.rings.includes(d.ring);
       const matchesSearch = this.searchTerm === '' || 
         d.name.toLowerCase().includes(this.searchTerm);
-      return matchesQuadrant && matchesRing && matchesSearch;
+      return matchesArc && matchesRing && matchesSearch;
     });
   }
 
@@ -424,7 +416,7 @@ class Radar {
         this.tooltip
           .style('opacity', '1')
           .html(`<strong>#${d.number} ${d.name}</strong><br/>
-                 ${this.config.quadrantLabels[d.quadrant]}<br/>
+                 ${this.config.arcLabels[d.arc]}<br/>
                  ${this.config.ringLabels[d.ring]}`)
           .style('left', (event.pageX + 10) + 'px')
           .style('top', (event.pageY - 10) + 'px');
@@ -449,20 +441,20 @@ class Radar {
           .style('font-weight', 'normal');
       })
       .on('click', (_event: MouseEvent, d: BlipWithPosition) => {
-        alert(`${d.name}\nQuadrant: ${this.config.quadrantLabels[d.quadrant]}\nRing: ${this.config.ringLabels[d.ring]}`);
+        alert(`${d.name}\narc: ${this.config.arcLabels[d.arc]}\nRing: ${this.config.ringLabels[d.ring]}`);
       });
   }
 
   private updateLegend(data: BlipWithPosition[]): void {
-    this.config.quadrantLabels.forEach((_, quadrantIndex) => {
-      const quadrantData = data
-        .filter(d => d.quadrant === quadrantIndex)
+    this.config.arcLabels.forEach((_, arcIndex) => {
+      const arcData = data
+        .filter(d => d.arc === arcIndex)
         .sort((a, b) => a.ring - b.ring || a.name.localeCompare(b.name));
 
-      const legendQuadrant = d3.select(`.legend-quadrant-${quadrantIndex}`);
+      const legendArc = d3.select(`.legend-arc-${arcIndex}`);
       
-      const items = legendQuadrant.selectAll<HTMLDivElement, BlipWithPosition>('.legend-item')
-        .data(quadrantData, d => d.id.toString());
+      const items = legendArc.selectAll<HTMLDivElement, BlipWithPosition>('.legend-item')
+        .data(arcData, d => d.id.toString());
 
       items.exit().remove();
 
@@ -512,14 +504,14 @@ class Radar {
             .attr('r', 8);
         })
         .on('click', (_event: MouseEvent, d: BlipWithPosition) => {
-          alert(`${d.name}\nQuadrant: ${this.config.quadrantLabels[d.quadrant]}\nRing: ${this.config.ringLabels[d.ring]}`);
+          alert(`${d.name}\narc: ${this.config.arcLabels[d.arc]}\nRing: ${this.config.ringLabels[d.ring]}`);
         });
     });
   }
 
   private resetFilters(): void {
     this.activeFilters = {
-      quadrants: [0, 1, 2, 3],
+      arcs: [0, 1, 2, 3],
       rings: [0, 1, 2, 3]
     };
     this.searchTerm = '';
